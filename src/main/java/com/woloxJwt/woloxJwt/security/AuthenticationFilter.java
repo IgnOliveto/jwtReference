@@ -23,10 +23,10 @@ import java.util.Date;
 
 import static com.woloxJwt.woloxJwt.constants.SecurityConstants.*;
 
-public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
+public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
     private AuthenticationManager authenticationManager;
 
-    public JWTAuthenticationFilter(AuthenticationManager authenticationManager) {
+    public AuthenticationFilter(AuthenticationManager authenticationManager) {
         this.authenticationManager = authenticationManager;
     }
 
@@ -34,14 +34,11 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     public Authentication attemptAuthentication(HttpServletRequest req,
                                                 HttpServletResponse res) throws AuthenticationException {
         try {
-            ApplicationUser applicationUser = new ObjectMapper()
-                    .readValue(req.getInputStream(), ApplicationUser.class);
+            ApplicationUser applicationUser = new ObjectMapper().readValue(req.getInputStream(), ApplicationUser.class);
 
             return authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            applicationUser.getUsername(),
-                            applicationUser.getPassword(),
-                            new ArrayList<>())
+                    new UsernamePasswordAuthenticationToken(applicationUser.getUsername(),
+                            applicationUser.getPassword(), new ArrayList<>())
             );
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -49,26 +46,13 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     }
 
     @Override
-    protected void successfulAuthentication(HttpServletRequest req,
-                                            HttpServletResponse res,
-                                            FilterChain chain,
+    protected void successfulAuthentication(HttpServletRequest req, HttpServletResponse res, FilterChain chain,
                                             Authentication auth) throws IOException, ServletException {
 
         Date exp = new Date(System.currentTimeMillis() + EXPIRATION_TIME);
-
-
-
-        String literal = SECRET;
-        byte[] bytes = literal.getBytes();
-        Key key = Keys.hmacShaKeyFor(bytes);
-
-
-        Claims claims = Jwts.claims()
-                .setSubject(((User) auth.getPrincipal()).getUsername());
-
-        String token = Jwts.builder().setClaims(claims)
-                .signWith(key)
-                .setExpiration(exp).compact();
+        Key key = Keys.hmacShaKeyFor(KEY.getBytes());
+        Claims claims = Jwts.claims().setSubject(((User) auth.getPrincipal()).getUsername());
+        String token = Jwts.builder().setClaims(claims).signWith(key).setExpiration(exp).compact();
         res.addHeader("token", token);
 
 

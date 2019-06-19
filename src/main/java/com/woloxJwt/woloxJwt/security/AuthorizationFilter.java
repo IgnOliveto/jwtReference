@@ -19,9 +19,9 @@ import java.util.ArrayList;
 
 import static com.woloxJwt.woloxJwt.constants.SecurityConstants.*;
 
-public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
+public class AuthorizationFilter extends BasicAuthenticationFilter {
 
-    public JWTAuthorizationFilter(AuthenticationManager authManager) {
+    public AuthorizationFilter(AuthenticationManager authManager) {
         super(authManager);
     }
 
@@ -29,7 +29,7 @@ public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws IOException, ServletException {
-        String header = request.getHeader(HEADER_STRING);
+        String header = request.getHeader(HEADER_NAME);
 
         if (header == null) {
             chain.doFilter(request, response);
@@ -43,10 +43,10 @@ public class JWTAuthorizationFilter extends BasicAuthenticationFilter {
     }
 
     private UsernamePasswordAuthenticationToken getAuthentication(HttpServletRequest request) {
-        String token = request.getHeader(HEADER_STRING);
+        String token = request.getHeader(HEADER_NAME);
         if (token != null) {
 
-            String literal = SECRET;
+            String literal = KEY;
             byte[] bytes = literal.getBytes();
 
             Key key = Keys.hmacShaKeyFor(bytes);
