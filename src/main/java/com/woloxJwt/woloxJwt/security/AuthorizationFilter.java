@@ -36,27 +36,19 @@ public class AuthorizationFilter extends BasicAuthenticationFilter {
             return;
         }
 
-        UsernamePasswordAuthenticationToken authentication = getAuthentication(request);
+        UsernamePasswordAuthenticationToken authentication = authenticate(request);
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         chain.doFilter(request, response);
     }
 
-    private UsernamePasswordAuthenticationToken getAuthentication(HttpServletRequest request) {
+    private UsernamePasswordAuthenticationToken authenticate(HttpServletRequest request) {
         String token = request.getHeader(HEADER_NAME);
         if (token != null) {
-
-            String literal = KEY;
-            byte[] bytes = literal.getBytes();
-
-            Key key = Keys.hmacShaKeyFor(bytes);
-
-
             Claims user = Jwts.parser()
-                    .setSigningKey(key)
+                    .setSigningKey(Keys.hmacShaKeyFor(KEY.getBytes()))
                     .parseClaimsJws(token)
                     .getBody();
-
 
             if (user != null) {
                 return new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
