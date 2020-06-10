@@ -1,12 +1,16 @@
 package com.woloxJwt.woloxJwt.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woloxJwt.woloxJwt.errors.AuthenticationHandlerError;
 import com.woloxJwt.woloxJwt.models.ApplicationUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import lombok.SneakyThrows;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -31,6 +35,7 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
         this.authenticationManager = authenticationManager;
     }
 
+    @SneakyThrows
     @Override
     public Authentication attemptAuthentication(HttpServletRequest req,
                                                 HttpServletResponse res) throws AuthenticationException {
@@ -41,9 +46,12 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
                     new UsernamePasswordAuthenticationToken(applicationUser.getUsername(),
                             applicationUser.getPassword(), new ArrayList<>())
             );
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        }  catch (BadCredentialsException notFoundException) {
+            AuthenticationHandlerError.getException(res, HttpStatus.UNAUTHORIZED, HttpStatus.UNAUTHORIZED.value(), "Username or password invalid");
+        }  catch (Exception e) {
+            AuthenticationHandlerError.getException(res, HttpStatus.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error when trying to obtain user");
         }
+        return null;
     }
 
     @Override
@@ -55,7 +63,5 @@ public class AuthenticationFilter extends UsernamePasswordAuthenticationFilter {
         Claims claims = Jwts.claims().setSubject(((User) auth.getPrincipal()).getUsername());
         String token = Jwts.builder().setClaims(claims).signWith(key, SignatureAlgorithm.HS512).setExpiration(exp).compact();
         res.addHeader("token", token);
-
-
     }
 }
