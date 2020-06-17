@@ -1,8 +1,11 @@
 package com.woloxJwt.woloxJwt.security;
 
+import com.woloxJwt.woloxJwt.errors.AuthoritationException;
+import com.woloxJwt.woloxJwt.errors.AuthenticationHandlerError;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,7 +17,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.security.Key;
 import java.util.ArrayList;
 
 import static com.woloxJwt.woloxJwt.constants.SecurityConstants.*;
@@ -29,34 +31,33 @@ public class AuthorizationFilter extends BasicAuthenticationFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws IOException, ServletException {
-        String header = request.getHeader(HEADER_NAME);
-
-        if (header == null) {
+        try {
+            UsernamePasswordAuthenticationToken authentication = authenticate(request);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
             chain.doFilter(request, response);
-            return;
+        } catch (AuthoritationException e) {
+            AuthenticationHandlerError.getException(response, e.getStatus(), e.getErrorCode(), e.getMessage());
         }
-
-        UsernamePasswordAuthenticationToken authentication = authenticate(request);
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        chain.doFilter(request, response);
     }
 
-    private UsernamePasswordAuthenticationToken authenticate(HttpServletRequest request) {
-        String token = request.getHeader(HEADER_NAME);
-        if (token != null) {
-            Claims user = Jwts.parser()
-                    .setSigningKey(Keys.hmacShaKeyFor(KEY.getBytes()))
-                    .parseClaimsJws(token)
-                    .getBody();
+    private UsernamePasswordAuthenticationToken authenticate(final HttpServletRequest request) {
+        final String token = request.getHeader(HEADER_NAME);
 
-            if (user != null) {
-                return new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
-            }else{
-                return  null;
+        if (token != null && !token.isEmpty()) {
+            try {
+                final Claims user = Jwts.parser()
+                        .setSigningKey(Keys.hmacShaKeyFor(KEY.getBytes()))
+                        .parseClaimsJws(token)
+                        .getBody();
+
+                if (user != null) {
+                    return new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+                }
+                throw new AuthoritationException("User not authenticated", HttpStatus.UNAUTHORIZED);
+            } catch (Exception e) {
+                throw new AuthoritationException("Invalid token", HttpStatus.UNAUTHORIZED);
             }
-
         }
-        return null;
+        throw new AuthoritationException("Bad authorization request", HttpStatus.BAD_REQUEST);
     }
 }
