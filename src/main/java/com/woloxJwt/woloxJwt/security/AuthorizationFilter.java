@@ -30,7 +30,6 @@ import static com.woloxJwt.woloxJwt.constants.SecurityConstants.*;
 
 public class AuthorizationFilter extends BasicAuthenticationFilter {
 
-    @Autowired
     ApplicationUserDetailsService applicationUserDetailsService;
 
     public AuthorizationFilter(AuthenticationManager authManager) {
